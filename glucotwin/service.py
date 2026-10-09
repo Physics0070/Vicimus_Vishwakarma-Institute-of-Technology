@@ -107,9 +107,18 @@ class ClinicalService:
         p_hypo = hypo.predict_proba(rows) if hypo is not None else np.zeros(len(rows))
         return {"fc": fc, "spike": p_spike, "hypo": p_hypo}
 
+    @cached_property
+    def spike_high(self) -> float:
+        # "high" must sit above the learned alert threshold, otherwise the "moderate" band is empty
+        # (the alert-burden policy can pick 0.8 itself)
+        thr = self.models["spike"].threshold
+        return round(max(0.8, (1 + thr) / 2), 3)
+
     def _tier(self, p_spike: float, p_hypo: float, g0: float) -> str:
         hypo_thr = self.models["hypo"].threshold if self.models.get("hypo") else 1.0
-        if p_hypo >= hypo_thr or g0 < 70 or g0 > 300 or p_spike >= 0.8:
+        if not np.isfinite(g0):           # CGM gap: rank on the model risk alone
+            g0 = 120.0
+        if p_hypo >= hypo_thr or g0 < 70 or g0 > 300 or p_spike >= self.spike_high:
             return "high"
         if p_spike >= self.models["spike"].threshold or g0 > 180:
             return "moderate"
@@ -184,7 +193,7 @@ class ClinicalService:
                         "cob_g": _clean(tw.carbs_on_board(np.array([i]))[0]),
                         "sleep_last_h": _clean(cur["sleep_last_h"].iloc[0])},
             "risk": {"p_spike": round(ps, 3), "p_hypo": round(ph, 3), "tier": self._tier(ps, ph, g0),
-                     "spike_threshold": self.models["spike"].threshold,
+                     "spike_threshold": self.models["spike"].threshold, "spike_high": self.spike_high,
                      "hypo_threshold": self.models["hypo"].threshold if self.models.get("hypo") else None,
                      "reasons": reasons, "by_stream": by_stream},
             "forecast": {"horizons": fc,
@@ -336,7 +345,13 @@ class ClinicalService:
         return sorted(res, key=lambda d: (d["time_above_180_min"], d["peak"]))
 
     def fhir(self, pid: str) -> dict:
-        return json.loads((C.FHIR_DIR / f"{pid}.json").read_text())
+        bundle = json.loads((C.FHIR_DIR / f"{pid}.json").read_text())
+        # same masking as the dashboard header: the full ABHA number never leaves the server
+        for e in bundle.get("entry", []):
+            for ident in e.get("resource", {}).get("identifier", []):
+                if "healthid" in ident.get("system", "") and ident.get("value"):
+                    ident["value"] = "XX-XXXX-XXXX-" + ident["value"][-4:]
+        return bundle
 
     def meta(self) -> dict:
         f = self.metrics["final"]

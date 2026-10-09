@@ -38,7 +38,8 @@ def patient_features(stream: pd.DataFrame, meals: pd.DataFrame, sleep: pd.DataFr
     n = len(df)
     start = pd.Timestamp(C.START_DATE)
     df["day"] = ((df["ts"] - start).dt.total_seconds() // 86400).astype(int)
-    g = df["cgm"].interpolate(limit=6, limit_area="inside").ffill(limit=3)
+    # causal gap fill only: interpolating across a dropout would pull in the *next* reading (future leakage)
+    g = df["cgm"].ffill(limit=6)
     df["cgm_missing"] = df["cgm"].isna().astype(int)
     out = pd.DataFrame({"patient_id": df["patient_id"], "ts": df["ts"], "day": df["day"], "cgm": df["cgm"]})
 

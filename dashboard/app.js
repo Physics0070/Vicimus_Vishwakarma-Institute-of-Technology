@@ -60,9 +60,12 @@ async function loadPatient(full = false) {
   if (!state.pid) return;
   const main = $("#main");
   main.classList.add("loading");
-  const d = await api(`/api/patients/${state.pid}?at=${encodeURIComponent(fmtTs(state.now))}`);
+  const pid = state.pid;
+  const d = await api(`/api/patients/${pid}?at=${encodeURIComponent(fmtTs(state.now))}`);
+  if (pid !== state.pid) return;   // another patient was selected while this request was in flight
   state.patient = d;
   if (full || !$("#chartGlucose")) renderShell(d);
+  else runSim().catch(simError);   // keep the what-if starting from the *current* replay time
   renderHeader(d);
   renderKpis(d);
   renderGlucose(d);
@@ -142,12 +145,17 @@ function renderShell(d) {
   bind("#simPortion", (v) => `${(+v).toFixed(2).replace(/0$/, "")}×`);
   bind("#simOffset", (v) => `${v} min`);
   bind("#simWalk", (v) => (+v ? `${v} min` : "none"));
-  $("#simRun").addEventListener("click", runSim);
-  $("#simRank").addEventListener("click", runRank);
+  $("#simRun").addEventListener("click", () => runSim().catch(simError));
+  $("#simRank").addEventListener("click", () => runRank().catch((e) => { $("#simRankOut").textContent = `Ranking failed: ${e.message}`; }));
   const slot = d.forecast && guessSlot(state.now);
   const def = { breakfast: "idli_sambar", lunch: "rice_dal_sabzi", dinner: "rice_dal_sabzi", snack: "chai_biscuits" }[slot];
   $("#simMeal").value = def;
-  runSim();
+  runSim().catch(simError);
+}
+
+function simError(e) {
+  const out = $("#simOut");
+  if (out) out.textContent = `Simulation failed: ${e.message}`;
 }
 
 function guessSlot(dt) {
@@ -175,11 +183,14 @@ function renderHeader(d) {
     $("#fhirPre").textContent = JSON.stringify(f, null, 2);
     $("#fhirDialog").showModal();
   });
-  $("#btnCopy").addEventListener("click", () => {
-    const s = d.insights.summary;
-    navigator.clipboard?.writeText(`${s.text}\n\nSuggested actions:\n- ${s.actions.join("\n- ")}\n\n${s.disclaimer}`);
-    $("#btnCopy").textContent = "Copied ✓";
-    setTimeout(() => ($("#btnCopy").textContent = "Copy summary"), 1500);
+  $("#btnCopy").addEventListener("click", async () => {
+    const s = state.patient.insights.summary;
+    const text = `${s.text}\n\nSuggested actions:\n- ${s.actions.join("\n- ")}\n\n${s.disclaimer}`;
+    let ok = false;
+    // navigator.clipboard is undefined on plain-http LAN hosts: don't claim success
+    try { await navigator.clipboard.writeText(text); ok = true; } catch { /* insecure context or denied */ }
+    $("#btnCopy").textContent = ok ? "Copied ✓" : "Copy failed (needs https or localhost)";
+    setTimeout(() => ($("#btnCopy").textContent = "Copy summary"), 2000);
   });
 }
 
@@ -187,13 +198,13 @@ function renderKpis(d) {
   const c = d.current, r = d.risk, m = d.insights.metrics_7d || {};
   const g = c.glucose;
   const gCls = g == null ? "" : g > 250 || g < 70 ? "alert" : g > 180 ? "watch" : "";
-  const sCls = r.p_spike >= 0.8 ? "alert" : r.p_spike >= r.spike_threshold ? "watch" : "";
+  const sCls = r.p_spike >= r.spike_high ? "alert" : r.p_spike >= r.spike_threshold ? "watch" : "";
   const hCls = r.hypo_threshold && r.p_hypo >= r.hypo_threshold ? "alert" : "";
   const f60 = d.forecast.horizons[60];
   $("#kpis").innerHTML = `
     <div class="kpi ${gCls}"><div class="lbl">Glucose now</div>
       <div class="val">${g == null ? "-" : Math.round(g)} <small>mg/dL ${arrow(c.trend_15)}</small></div>
-      <div class="hint">60 min: ${Math.round(f60.point)} (${Math.round(f60.lo)}–${Math.round(f60.hi)})</div></div>
+      <div class="hint">${f60.point == null ? "60 min: -" : `60 min: ${Math.round(f60.point)} (${Math.round(f60.lo)}–${Math.round(f60.hi)})`}</div></div>
     <div class="kpi ${sCls}"><div class="lbl">2-h spike risk (&gt;180)</div>
       <div class="val">${pct(r.p_spike)}</div><div class="bar"><i style="width:${r.p_spike * 100}%;background:${r.p_spike >= r.spike_threshold ? css("--bad") : css("--accent")}"></i></div></div>
     <div class="kpi ${hCls}"><div class="lbl">2-h hypo risk (&lt;70)</div>
@@ -346,7 +357,7 @@ async function runSim() {
 
 async function runRank() {
   const meal = state.meta.meals.find((m) => m.key === $("#simMeal").value);
-  const slot = meal.slot === "snack" ? "snack" : meal.slot === "breakfast" ? "breakfast" : "lunch";
+  const slot = meal.slot;
   const r = await api(`/api/patients/${state.pid}/meal-ranking?slot=${slot}&at=${encodeURIComponent(fmtTs(state.now))}&offset_min=${$("#simOffset").value}&walk_min=${$("#simWalk").value}`);
   $("#simRankOut").innerHTML = `<table><thead><tr><th>Option (${slot}, region-aware)</th><th style="text-align:right">peak</th><th style="text-align:right">&gt;180</th></tr></thead><tbody>
     ${r.slice(0, 8).map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.peak}</td><td class="num">${x.time_above_180_min}′</td></tr>`).join("")}</tbody></table>`;

@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -20,7 +22,10 @@ DASHBOARD = C.ROOT / "dashboard"
 
 app = FastAPI(title="GlucoTwin India API", version="0.1.0",
               description="Hybrid physiological + ML digital twin for Type 2 Diabetes (synthetic data, proof of concept).")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# The bundled dashboard is same-origin; other origins must be allowed explicitly (comma-separated).
+_origins = [o.strip() for o in os.getenv("GLUCOTWIN_CORS_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 
 @lru_cache(maxsize=1)
@@ -31,6 +36,19 @@ def svc() -> ClinicalService:
 def _check(pid: str) -> None:
     if pid not in svc().ward_ids:
         raise HTTPException(404, f"Patient {pid} is not in the virtual ward")
+
+
+def _at(at: str | None) -> pd.Timestamp | None:
+    """Parse the replay clock; malformed input is a client error, not a 500."""
+    if at is None:
+        return None
+    try:
+        ts = pd.Timestamp(at)
+    except (ValueError, TypeError):
+        raise HTTPException(422, f"Invalid timestamp '{at}'")
+    if ts is pd.NaT:
+        raise HTTPException(422, f"Invalid timestamp '{at}'")
+    return ts.tz_localize(None) if ts.tzinfo is not None else ts   # the replay clock is naive local time
 
 
 class MealPlan(BaseModel):
@@ -47,14 +65,14 @@ class WalkPlan(BaseModel):
 
 class Scenario(BaseModel):
     label: str = "scenario"
-    meals: list[MealPlan] = []
-    walks: list[WalkPlan] = []
+    meals: list[MealPlan] = Field(default_factory=list, max_length=10)
+    walks: list[WalkPlan] = Field(default_factory=list, max_length=10)
 
 
 class WhatIfRequest(BaseModel):
     at: str | None = None
     horizon_min: int = Field(300, ge=60, le=720)
-    scenarios: list[Scenario]
+    scenarios: list[Scenario] = Field(min_length=1, max_length=6)
 
 
 @app.get("/api/health")
@@ -69,13 +87,13 @@ def meta():
 
 @app.get("/api/ward")
 def ward(at: str | None = None):
-    return svc().ward(at)
+    return svc().ward(_at(at))
 
 
 @app.get("/api/patients/{pid}")
 def patient(pid: str, at: str | None = None, window_h: float = Query(12, ge=2, le=48)):
     _check(pid)
-    return svc().patient(pid, at, window_h)
+    return svc().patient(pid, _at(at), window_h)
 
 
 @app.post("/api/patients/{pid}/whatif")
@@ -86,14 +104,15 @@ def whatif(pid: str, req: WhatIfRequest):
         for m in sc.meals:
             if m.meal_key not in MEALS:
                 raise HTTPException(422, f"Unknown meal '{m.meal_key}'")
-    return svc().whatif(pid, req.at, [s.model_dump() for s in req.scenarios], req.horizon_min)
+    return svc().whatif(pid, _at(req.at), [s.model_dump() for s in req.scenarios], req.horizon_min)
 
 
 @app.get("/api/patients/{pid}/meal-ranking")
 def meal_ranking(pid: str, slot: str = Query("lunch", pattern="^(breakfast|lunch|dinner|snack)$"),
-                 at: str | None = None, offset_min: int = 0, walk_min: int = 0):
+                 at: str | None = None, offset_min: int = Query(0, ge=0, le=600),
+                 walk_min: int = Query(0, ge=0, le=180)):
     _check(pid)
-    return svc().meal_ranking(pid, at, slot, offset_min, walk_min)
+    return svc().meal_ranking(pid, _at(at), slot, offset_min, walk_min)
 
 
 @app.get("/api/patients/{pid}/fhir")

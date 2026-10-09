@@ -1,0 +1,14 @@
+# Rebuilt inside the image by `python -m glucotwin.pipeline`
+data/
+artifacts/
+
+# Team-only presenter notes (not part of the submission) and local tooling
+presenter/
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/

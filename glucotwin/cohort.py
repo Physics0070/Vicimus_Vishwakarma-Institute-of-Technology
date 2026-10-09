@@ -271,7 +271,8 @@ def to_fhir_bundle(rec: PatientRecord, ref_date: date) -> dict:
         entries.append(med("274783", "Insulin glargine", "14 units at bedtime"))
 
     return {"resourceType": "Bundle", "type": "collection", "id": f"bundle-{pid}",
-            "entry": [{"fullUrl": f"urn:uuid:{e['id']}", "resource": e} for e in entries]}
+            "entry": [{"fullUrl": f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'glucotwin/Patient/' + pid)}"
+                       if e["resourceType"] == "Patient" else f"urn:uuid:{e['id']}", "resource": e} for e in entries]}
 
 
 def write_fhir(rec: PatientRecord, ref_date: date, out_dir: Path) -> None:

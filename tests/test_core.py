@@ -96,13 +96,15 @@ def test_walk_lowers_postprandial_peak(patient):
 
 
 def test_features_have_no_future_leakage(patient):
-    f = patient_features(patient["stream"], patient["meals"], patient["sleep"], patient["ehr"], None)
+    s1 = patient["stream"].copy()
+    s1.loc[596:599, "cgm"] = np.nan          # sensor dropout right before the perturbed future
+    f = patient_features(s1, patient["meals"], patient["sleep"], patient["ehr"], None)
     # perturbing future CGM must not change present features
-    s2 = patient["stream"].copy()
+    s2 = s1.copy()
     s2.loc[s2.index >= 600, "cgm"] += 50
     f2 = patient_features(s2, patient["meals"], patient["sleep"], patient["ehr"], None)
     feats = [c for c in f.columns if not c.startswith(("y_", "fut_")) and c not in ("cgm",)]
-    pd.testing.assert_frame_equal(f.loc[:590, feats], f2.loc[:590, feats])
+    pd.testing.assert_frame_equal(f.loc[:599, feats], f2.loc[:599, feats])
 
 
 def test_clarke_zones():

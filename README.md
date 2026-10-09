@@ -99,25 +99,25 @@ Evaluation protocol (no leakage): **subject-level split**, 48 train / 16 conform
 
 | Metric | Value |
 |---|---|
-| 60-min forecast RMSE / MARD | **17.3 mg/dL / 7.5%** (persistence: 37.5) |
+| 60-min forecast RMSE / MARD | **17.5 mg/dL / 7.5%** (persistence: 37.6) |
 | Clarke error grid A+B (60 min) | **99.7%** |
-| 90% conformal interval coverage (60 min) | **88.8%** |
-| 2-h spike alert AUROC / precision / recall | **0.958 / 0.90 / 0.60** |
-| Excursions flagged in advance | **133/162 (82%)**, median lead **70 min** |
-| False alerts | **0.53 per patient-day** (alert policy: threshold chosen for ≤ 1/day on calibration patients, 10-min confirmation, 60-min snooze) |
+| 90% conformal interval coverage (60 min) | **88.9%** |
+| 2-h spike alert AUROC / precision / recall | **0.959 / 0.89 / 0.63** |
+| Excursions flagged in advance | **129/162 (80%)**, median lead **70 min** |
+| False alerts | **0.62 per patient-day** (alert policy: threshold chosen for ≤ 1/day on calibration patients, 10-min confirmation, 60-min snooze) |
 | Twin parameter recovery (Spearman ρ) | insulin action **0.90**, basal glucose **0.87** |
 
 **Ablation: every data stream adds value.** Fusing the wearable and meal stream with CGM cuts 30-min error by about 23%. Adding the twin's physiological simulation gives the best model at every horizon.
 
 | Model | RMSE @30 min | RMSE @60 min | RMSE @120 min | 2-h spike AUROC |
 |---|---|---|---|---|
-| Persistence | 21.9 | 37.5 | 53.8 | - |
-| Linear extrapolation | 23.0 | 50.3 | 94.3 | - |
+| Persistence | 22.0 | 37.6 | 53.9 | - |
+| Linear extrapolation | 23.1 | 50.4 | 94.4 | - |
 | Twin only (physiology) | 17.6 | 24.2 | 37.5 | - |
-| CGM only | 12.9 | 21.9 | 27.1 | 0.947 |
+| CGM only | 12.9 | 21.9 | 27.0 | 0.947 |
 | + Wearables & meal log | 9.9 | 18.3 | 25.9 | 0.958 |
-| + EHR (stream fusion) | 9.7 | 18.1 | 26.0 | 0.955 |
-| **+ Twin physiology (full hybrid)** | **9.1** | **17.1** | **24.9** | **0.959** |
+| + EHR (stream fusion) | 9.8 | 18.1 | 25.9 | 0.956 |
+| **+ Twin physiology (full hybrid)** | **9.1** | **17.2** | **25.0** | **0.959** |
 
 ![Ablation](reports/figures/ablation_rmse.png)
 
