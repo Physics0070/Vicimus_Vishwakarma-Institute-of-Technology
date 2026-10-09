@@ -1,0 +1,15 @@
+# data/ and artifacts/ are git-ignored but ARE deployed: the API serves the trained twins and models.
+.git/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+presenter/
+docs/
+tests/
+scripts/
+reports/figures/
+data/external/
+artifacts/cgmacros_*
+.vercel/
+.env*

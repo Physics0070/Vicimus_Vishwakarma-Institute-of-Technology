@@ -4,6 +4,8 @@
 
 > Team **Vicimus**, Vishwakarma Institute of Technology. Submission for the **Happiest Health Digital Twin Challenge 2026**: *Reimagining and Reforming Healthcare in India Summit*, Bengaluru.
 
+**Live demo:** https://glucotwin-india.vercel.app (synthetic patients only)
+
 ![Dashboard](reports/figures/dashboard.png)
 
 ---
@@ -151,7 +153,7 @@ The same pipeline, with one data adapter, was run on **45 real adults** (15 heal
 ## 7. Run it
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt  # requirements.txt alone is the API runtime
 python -m glucotwin.pipeline           # generate cohort → calibrate 80 twins → train → evaluate (~3 min)
 uvicorn glucotwin.api:app --port 8000  # open http://localhost:8000
 
@@ -164,6 +166,8 @@ python scripts/build_docs.py
 ```
 
 Or with Docker: `docker compose up --build`, then open http://localhost:8000.
+
+**Deploy to Vercel:** run the pipeline locally first (the trained twins and models in `data/` and `artifacts/` are git-ignored but uploaded by the CLI, see `.vercelignore`), then `vercel deploy --prod`. `index.py` is the entrypoint; `vercel.json` sets memory and timeout.
 
 Tests: `python -m pytest -q`
 

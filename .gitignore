@@ -16,3 +16,6 @@ Thumbs.db
 
 # Team-only presenter notes (not part of the submission)
 presenter/
+
+.vercel
+.env*

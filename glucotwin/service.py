@@ -68,10 +68,11 @@ class ClinicalService:
         self.data = load_data()
         self.twin_params = pd.read_parquet(C.ARTIFACT_DIR / "twin_params.parquet")
         self.models = joblib.load(C.ARTIFACT_DIR / "models.joblib")
-        feat = pd.read_parquet(C.ARTIFACT_DIR / "features.parquet")
         self.split = self.models["split"]
         self.ward_ids = list(self.split["test"])
-        self.feat = {pid: d.reset_index(drop=True) for pid, d in feat[feat.patient_id.isin(self.ward_ids)].groupby("patient_id")}
+        # read only the ward's rows: the full table is ~5x larger and serverless memory is limited
+        feat = pd.read_parquet(C.ARTIFACT_DIR / "features.parquet", filters=[("patient_id", "in", self.ward_ids)])
+        self.feat = {pid: d.sort_values("ts").reset_index(drop=True) for pid, d in feat.groupby("patient_id")}
         self.ehr = self.data["ehr"].set_index("patient_id")
         self.start = pd.Timestamp(C.START_DATE)
         self.n_steps = C.N_DAYS * 1440 // C.SAMPLE_MIN
