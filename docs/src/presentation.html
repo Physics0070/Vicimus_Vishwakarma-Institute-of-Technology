@@ -76,7 +76,7 @@
   <div class="cols c3" style="flex:0 0 auto;margin-bottom:26px">
     <div class="card"><div class="stat" style="color:var(--red)">101<small> M</small></div><div class="statlbl">Indians living with diabetes, plus <b>136 M</b> with prediabetes (ICMR-INDIAB, 2023)</div></div>
     <div class="card"><div class="stat" style="color:var(--amber)">1 in 3</div><div class="statlbl">or fewer reach glycaemic targets. Most complications are driven by uncontrolled excursions</div></div>
-    <div class="card"><div class="stat" style="color:var(--violet)">~26,000</div><div class="statlbl">CGM + smartwatch readings per patient between two 3-monthly OPD visits, that no doctor can read</div></div>
+    <div class="card"><div class="stat" style="color:var(--violet)">~26,000</div><div class="statlbl">CGM readings per patient between two 3-monthly OPD visits (before counting the smartwatch streams), that no doctor can read</div></div>
   </div>
   <ul>
     <li><b>HbA1c is an average.</b> It hides the post-meal spikes that carbohydrate-heavy Indian diets (rice, wheat) cause every day.</li>
@@ -185,10 +185,10 @@
   <div class="cols c2">
     <div>
       <ul>
-        <li><b>~85 fused features</b> per 5-min step: CGM trends, steps, HR, HRV vs personal baseline, last night's sleep, logged carbs and glycaemic load, EHR, <b>twin-simulated trajectories</b>, carbs on board, insulin action</li>
+        <li><b>{{n_features}} fused features</b> per 5-min step: CGM trends, steps, HR, HRV vs personal baseline, last night's sleep, logged carbs and glycaemic load, EHR, <b>twin-simulated trajectories</b>, carbs on board, insulin action</li>
         <li><b>LightGBM</b> forecasts Δglucose at 30 / 60 / 120 min</li>
-        <li><b>Conformalised quantile regression</b> gives 90% intervals with guaranteed coverage</li>
-        <li><b>Event classifiers</b> for spikes (&gt;180) and hypos (&lt;70) within 2 h</li>
+        <li><b>Conformalised quantile regression</b> gives 90% intervals calibrated on held-out patients (measured coverage {{coverage}}% at 60 min)</li>
+        <li><b>Event classifier</b> for spikes (&gt;180) within 2 h. A hypoglycaemia classifier is trained only if the cohort has enough events; this one did not, so no hypo risk is claimed</li>
       </ul>
     </div>
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -255,7 +255,7 @@
   <div class="kicker">The doctor's view</div>
   <h1 style="font-size:32px;margin-bottom:14px">A virtual ward, triaged by 2-hour risk, with the twin of every patient</h1>
   <div class="figbox" style="flex:1"><img class="fig shot" src="dashboard_top.png"></div>
-  <div class="foot"><span>Live stream replay · forecast cone · twin trajectory · "why this alert" · wearables · twin phenotype</span><span>12</span></div>
+  <div class="foot"><span>Risk queue · triage map · twin of the highest-risk patient · shared replay clock ({{demo_when}}, synthetic cohort)</span><span>12</span></div>
 </section>
 
 <!-- 13. What-if -->
@@ -266,7 +266,7 @@
   <div class="cols c3" style="flex:0 0 auto">
     <div class="card"><h2>One meal, three futures</h2><p>No further meal vs. rice-dal-sabzi vs. the same meal + a 15-min walk, simulated from the patient's <b>current</b> state.</p></div>
     <div class="card"><h2>Best swaps</h2><p>Ranks region-appropriate alternatives by simulated time above 180 mg/dL <b>for this patient</b>.</p></div>
-    <div class="card"><h2>Personal food response</h2><p>From the patient's own logs: white rice +90 mg/dL vs jowar roti +53 mg/dL.</p></div>
+    <div class="card"><h2>Personal food response</h2><p>{{food_text}}</p></div>
   </div>
   <div class="foot"><span>GlucoTwin India · Team Vicimus</span><span>13</span></div>
 </section>

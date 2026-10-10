@@ -33,12 +33,12 @@ export function mountSimChart(el) {
         <text x="${xMin(Math.max(5, plan.meal)) + 5}" y="${M.t + 10}" fill="var(--mod)">meal</text>` : ""}
       ${plan.walk ? `<rect x="${xMin(plan.walk[0])}" y="${H - M.b - 6}" width="${Math.max(2, xMin(plan.walk[0] + plan.walk[1]) - xMin(plan.walk[0]))}" height="6" rx="3" fill="var(--twin)" opacity=".8"/>
         <text x="${xMin(plan.walk[0])}" y="${H - M.b - 10}" fill="var(--twin)">walk</text>` : ""}
-      ${r.scenarios.map((s, i) => `<path class="ln ${CLS[i]} ${replay ? "draw" : ""}" pathLength="1" style="--d:${i * 0.25}s" d="${path(s.glucose)}"/>`).join("")}
+      ${r.scenarios.map((s, i) => `<path class="ln ${CLS[i]} ${replay ? "draw" : ""}" ${replay ? 'pathLength="1"' : ""} style="--d:${i * 0.25}s" d="${path(s.glucose)}"/>`).join("")}
       <line class="cross" x1="0" x2="0" y1="${M.t}" y2="${H - M.b}" visibility="hidden"/>
       <rect x="${M.l}" y="${M.t}" width="${W - M.l - M.r}" height="${H - M.t - M.b}" fill="transparent" data-hit/>
     </svg><div class="tip"></div>`;
-    // the CSS draw animation uses dasharray 1 on pathLength=1; drop it when finished so dashed baselines show
-    if (replay) setTimeout(() => el.querySelectorAll(".draw").forEach((p) => p.classList.remove("draw")), 2400);
+    // the CSS draw animation uses dasharray 1 on pathLength=1; drop it when each line finishes so the dashed baseline shows
+    if (replay) el.querySelectorAll(".draw").forEach((p) => p.addEventListener("animationend", () => { p.classList.remove("draw"); p.removeAttribute("pathLength"); }, { once: true }));
 
     const svg = el.querySelector("svg"), cross = el.querySelector(".cross"), tip = el.querySelector(".tip"), hit = el.querySelector("[data-hit]");
     const move = (e) => {

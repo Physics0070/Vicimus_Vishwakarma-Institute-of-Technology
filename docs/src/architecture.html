@@ -70,7 +70,7 @@
     <text x="26" y="130" class="s">Medications: metformin, SU, insulin (RxNorm)</text>
     <text x="26" y="150" class="s">Genetics: TCF7L2 rs7903146, polygenic risk</text>
     <text x="26" y="176" class="s" style="font-weight:600;fill:var(--static)">HL7 FHIR R4 bundles · ABHA identifier</text>
-    <text x="26" y="196" class="s">Synthetic generator (Synthea-compatible);</text>
+    <text x="26" y="196" class="s">Custom synthetic generator, FHIR R4 export;</text>
     <text x="26" y="214" class="s">CGMacros bloodwork for real-data validation</text>
 
     <g class="box"><rect x="10" y="250" width="350" height="230" fill="var(--dyn-bg)" stroke="var(--dyn)"/></g>
@@ -103,7 +103,7 @@
 
     <g class="box"><rect x="400" y="250" width="320" height="230" fill="#fff" stroke="var(--dyn)"/></g>
     <text x="416" y="276" class="t">Stream alignment (5-min grid)</text>
-    <text x="416" y="300" class="s">Gap interpolation (≤ 30 min), missingness flag</text>
+    <text x="416" y="300" class="s">Causal gap fill (≤ 30 min), missingness flag</text>
     <text x="416" y="320" class="s">CGM lags, slopes, acceleration, variability</text>
     <text x="416" y="340" class="s">Steps 15–120 min, HR vs 24-h baseline</text>
     <text x="416" y="360" class="s">HRV vs personal 3-day baseline (stress)</text>
@@ -141,7 +141,7 @@
     <text x="776" y="384" class="s">+ twin-simulated trajectories, carbs-on-board, insulin action</text>
     <text x="776" y="410" class="s" style="font-weight:600">LightGBM Δglucose @ 30 / 60 / 120 min</text>
     <text x="776" y="430" class="s">Conformalised quantile regression → 90% intervals</text>
-    <text x="776" y="456" class="s" style="font-weight:600">Event classifiers: P(&gt;180 in 2 h), P(&lt;70 in 2 h)</text>
+    <text x="776" y="456" class="s" style="font-weight:600">Event classifier: P(&gt;180 mg/dL in 2 h)</text>
     <text x="776" y="476" class="s">Threshold set for ≤ 1 false alert / patient-day</text>
     <text x="776" y="502" class="s" style="font-weight:600">TreeSHAP explanations, grouped by data stream</text>
     <text x="776" y="522" class="s">translated to clinician language</text>
@@ -157,24 +157,24 @@
     <g class="box"><rect x="1200" y="40" width="350" height="140" fill="var(--app-bg)" stroke="var(--app)"/></g>
     <text x="1216" y="66" class="t" style="fill:var(--app)">FastAPI service</text>
     <text x="1216" y="90" class="s">/ward · /patients/{id} · /whatif</text>
-    <text x="1216" y="110" class="s">/meal-ranking · /fhir · OpenAPI docs</text>
+    <text x="1216" y="110" class="s">/alerts · /timeline · /meal-ranking · /fhir</text>
     <text x="1216" y="134" class="s">Clinical service layer: TIR, GMI, CV,</text>
     <text x="1216" y="154" class="s">food response, sleep effect, summaries</text>
 
     <g class="box"><rect x="1200" y="200" width="350" height="300" fill="var(--app-bg)" stroke="var(--app)"/></g>
     <circle cx="1224" cy="222" r="12" fill="var(--app)"/><text x="1219" y="227" class="num">5</text>
     <text x="1244" y="227" class="t" style="fill:var(--app)">ACT · clinician dashboard</text>
-    <text x="1216" y="254" class="s">• Virtual ward triaged by 2-h risk</text>
-    <text x="1216" y="276" class="s">• Glucose history + forecast cone + twin curve</text>
-    <text x="1216" y="298" class="s">• "Why this alert": patient-specific drivers</text>
-    <text x="1216" y="320" class="s">• Wearable panel: HR, HRV, steps, hypnogram</text>
-    <text x="1216" y="342" class="s">• Twin phenotype percentiles</text>
+    <text x="1216" y="254" class="s">• Overview: KPIs, risk queue, triage map</text>
+    <text x="1216" y="276" class="s">• Observed + ML forecast + twin curve</text>
+    <text x="1216" y="298" class="s">• "Why this alert": TreeSHAP drivers</text>
+    <text x="1216" y="320" class="s">• Replay scrubber over the whole record</text>
+    <text x="1216" y="342" class="s">• Twin state: observation → projection</text>
     <text x="1216" y="364" class="s">• What-if simulator + best meal swaps</text>
-    <text x="1216" y="386" class="s">• Personal food response, sleep vs glucose</text>
-    <text x="1216" y="408" class="s">• EHR, genetics, HbA1c trend, FHIR viewer</text>
-    <text x="1216" y="430" class="s">• Auto-drafted pre-consultation summary</text>
-    <text x="1216" y="460" class="s" style="font-weight:600">Live replay of the stream · light/dark ·</text>
-    <text x="1216" y="480" class="s" style="font-weight:600">offline-capable (no CDN at runtime)</text>
+    <text x="1216" y="386" class="s">• Alert history with real outcomes</text>
+    <text x="1216" y="408" class="s">• Wearables, food response, sleep, labs</text>
+    <text x="1216" y="430" class="s">• FHIR record · pre-consultation summary</text>
+    <text x="1216" y="460" class="s" style="font-weight:600">Shared replay clock · dark/light ·</text>
+    <text x="1216" y="480" class="s" style="font-weight:600">charts bundled; system-font fallback</text>
 
     <g class="box"><rect x="1200" y="520" width="350" height="160" fill="#fff" stroke="var(--app)" stroke-dasharray="6 5"/></g>
     <text x="1216" y="546" class="t">Users</text>
