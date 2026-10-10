@@ -1,33 +1,9 @@
 /* Clinical record: the patient's HL7 FHIR R4 bundle as the API serves it, made readable,
-   with structural checks that run in the browser (and say plainly what they do not check). */
+   shown by resource type. */
 
 import { api, latest, isAbort } from "../api.js";
 import { emit } from "../store.js";
 import { $, esc, errorBox, ICON } from "../ui.js";
-
-const UUID = /^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function structuralChecks(b) {
-  const entries = b.entry || [];
-  const res = entries.map((e) => e.resource || {});
-  const patients = res.filter((r) => r.resourceType === "Patient");
-  const pref = patients[0] ? `Patient/${patients[0].id}` : null;
-  const codings = res.flatMap((r) => [r.code, r.medicationCodeableConcept, ...(r.category || []), r.clinicalStatus].filter(Boolean).flatMap((c) => c.coding || []));
-  const obs = res.filter((r) => r.resourceType === "Observation");
-  const valueOf = (o) => o.valueQuantity || o.valueCodeableConcept || o.valueString;
-  const subj = res.filter((r) => r.subject);
-  const badSubj = subj.filter((r) => r.subject.reference !== pref);
-  const badUrl = entries.filter((e) => !UUID.test(e.fullUrl || ""));
-  return [
-    [b.resourceType === "Bundle" && !!b.type, `Resource is a Bundle of type "${esc(b.type)}"`],
-    [badUrl.length === 0, badUrl.length ? `${badUrl.length} entries have a fullUrl that is not a valid urn:uuid` : `All ${entries.length} entries have a valid urn:uuid fullUrl`],
-    [res.every((r) => r.resourceType && r.id), "Every resource has a resourceType and an id"],
-    [patients.length === 1, `${patients.length} Patient resource${patients.length === 1 ? "" : "s"} (expected exactly 1)`],
-    [badSubj.length === 0, badSubj.length ? `${badSubj.length} subject references do not resolve to the Patient` : `All ${subj.length} subject references resolve to ${esc(pref)}`],
-    [codings.every((c) => c.system && c.code), `All ${codings.length} codings carry a system and a code`],
-    [obs.every((o) => o.status && o.code && o.effectiveDateTime && valueOf(o)), `All ${obs.length} Observations have status, code, effective time and a value`],
-  ];
-}
 
 const sys = (s) => ({ "http://loinc.org": "LOINC", "http://snomed.info/sct": "SNOMED CT", "http://www.nlm.nih.gov/research/umls/rxnorm": "RxNorm" }[s] || s);
 
@@ -54,13 +30,11 @@ export default {
       const by = (t) => res.filter((r) => r.resourceType === t);
       const pt = by("Patient")[0] || {};
       const counts = res.reduce((m, r) => ({ ...m, [r.resourceType]: (m[r.resourceType] || 0) + 1 }), {});
-      const checks = structuralChecks(b);
-      const passed = checks.filter((c) => c[0]).length;
       const obs = by("Observation").slice().sort((a, b2) => String(b2.effectiveDateTime).localeCompare(a.effectiveDateTime));
       $("#recTitle", root).textContent = `${pt.name?.[0]?.text || pid} · clinical record`;
       $("#recBody", root).innerHTML = `
         <section class="grid">
-          <div class="panel c8">
+          <div class="panel c12">
             <div class="panel-head"><h2>Bundle contents</h2><div class="res-types">${Object.entries(counts).map(([t, n]) => `<span class="pill">${esc(t)} × ${n}</span>`).join("")}</div></div>
             <div class="grid">
               <div class="c6"><h3 style="font-size:14px;margin-bottom:10px">Patient</h3><dl class="kv">
@@ -82,11 +56,6 @@ export default {
                 const v = o.valueQuantity ? `${o.valueQuantity.value} ${o.valueQuantity.unit}` : o.valueCodeableConcept?.text || "";
                 return `<tr><td>${esc(c.display)}</td><td class="num">${esc(v)}</td><td class="num faint">${esc(o.effectiveDateTime)}</td><td class="code">${esc(sys(c.system))} ${esc(c.code)}</td></tr>`;
               }).join("")}</tbody></table></div>
-          </div>
-          <div class="panel c4">
-            <div class="panel-head"><h2>Structural checks</h2><span class="pill">${passed} / ${checks.length} passed</span></div>
-            <ul class="checks">${checks.map(([ok, t]) => `<li><span class="${ok ? "ok" : "bad"}" aria-label="${ok ? "pass" : "fail"}">${ok ? ICON.check : ICON.cross}</span><span>${t}</span></li>`).join("")}</ul>
-            <p class="note" style="margin-top:16px">These checks run in your browser. They are <b>not</b> a FHIR conformance validator: no profile, cardinality, terminology-binding or invariant validation (use the HL7 validator or an ABDM sandbox for that). The bundle uses FHIR R4 resource shapes with LOINC, SNOMED CT and RxNorm codes.</p>
           </div>
           <div class="panel c12"><details class="raw"><summary>Raw FHIR JSON (${res.length} resources)</summary><pre></pre></details></div>
         </section>`;

@@ -180,7 +180,7 @@ Open **Overview**, pick a patient from the risk queue, and press **Replay** in t
 | **Ward** | Every patient, searchable, filterable by tier, diagnosis and SU/insulin therapy, and sortable |
 | **Twin** | One patient at one moment: 2-h risk and its TreeSHAP drivers; observed CGM, ML forecast with 90% interval and twin physiology on one chart; a replay scrubber over the whole record; the twin's internal state (observations → state → projection → review); wearables, food response, sleep, labs and the pre-consultation summary |
 | **Simulate** | The twin rolled forward 5 h from the replay clock under a planned meal and walk, against no further meal; **Rank options** simulates every regional alternative |
-| **Records** | The FHIR R4 bundle made readable, with structural checks run in the browser (not a conformance validator) |
+| **Records** | The patient's FHIR R4 bundle made readable by resource type (patient, conditions, medications, observations), with the raw JSON one click away |
 | **Alerts** | Every notification the alert policy sent, with what the CGM recorded next |
 
 The **replay clock** in the header drives every page (−1 h / +1 h, Replay, speed). It is stored in the URL, so `#/patient/P050?t=2026-09-11T12:10` is a shareable, reproducible view. On the Twin page, **Reveal what happened next** overlays the CGM recorded after the clock (retrospective only, never shown to the model). Observed, predicted, simulated and revealed data always use distinct marks and labels.

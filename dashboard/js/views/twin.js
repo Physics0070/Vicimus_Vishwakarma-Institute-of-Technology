@@ -66,8 +66,7 @@ export default {
             `<button role="tab" id="tab-${k}" aria-controls="panel-${k}" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join("")}</div>
           ${TABS.map(([k]) => `<div class="tabpanel" role="tabpanel" id="panel-${k}" aria-labelledby="tab-${k}" ${k === tab ? "" : "hidden"}></div>`).join("")}
         </div>
-      </section>
-      <p class="note" style="margin-top:20px;max-width:90ch" id="limits"></p>`;
+      </section>`;
 
     const req = latest(), tlReq = latest();
     const scrub = mountScrubber($("#scrub", root), {
@@ -132,7 +131,6 @@ export default {
       renderTwinChart($("#twinChart", root), d);
       renderPipe();
       renderTab();
-      $("#limits", root).innerHTML = `<b>How to read this.</b> <b>Observed</b> points are CGM readings recorded up to the replay clock. The <b>ML forecast</b> is a LightGBM model; on unseen test patients its 90% interval contained the true value ${store.meta.model_card.coverage_60}% of the time at 60 min. <b>Twin physiology</b> is this patient's calibrated 3-state minimal model (fitted on days 1–10); it does not model medication changes, illness or stress, which the ML layer only partly captures. <b>Recorded later</b> is shown only in retrospective replay and is never available to either model. This is a synthetic patient.`;
     }
 
     function renderHead(p) {
