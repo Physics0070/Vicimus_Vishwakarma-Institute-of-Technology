@@ -83,8 +83,8 @@ Post-meal glucose excursions, which are common with India's carbohydrate-heavy r
 | Event alerts | LightGBM classifiers + a CGM-style alert policy: threshold chosen for **≤ 1 false alert per patient-day**, 10-min confirmation, 60-min snooze (alert fatigue is a safety issue) |
 | Explainability | LightGBM-native **TreeSHAP**, grouped by data stream and translated to plain language |
 | Backend | FastAPI (typed with Pydantic), stateless "replay clock" that simulates a live stream |
-| Frontend | Dependency-free HTML/CSS/JS + Plotly (bundled for offline demos); light and dark themes; responsive |
-| Quality | pytest (physiology, FHIR, twin calibration, *no-future-leakage* test, metrics); Docker |
+| Frontend | Dependency-free HTML/CSS + ES modules + Plotly (bundled for offline demos); hash-routed pages, shared replay clock, guided demo, scroll reveals that respect reduced motion; dark and light themes; responsive down to phone width |
+| Quality | pytest (physiology, FHIR, twin calibration, *no-future-leakage* test, metrics, API contracts incl. no-peeking checks); Docker; Vercel |
 
 ### Indian context, built in
 - **27-item Indian meal library** (idli, dosa, poha, aloo paratha, rice-dal, rajma chawal, biryani, jowar/ragi, chai-biscuits, samosa…) with carbohydrate, GI, fat, protein and fibre. These drive absorption speed in both the simulator and the twin.
@@ -172,20 +172,32 @@ Or with Docker: `docker compose up --build`, then open http://localhost:8000.
 Tests: `python -m pytest -q`
 
 ### Using the dashboard
-1. The **virtual ward** (left) lists unseen test patients sorted by 2-hour risk.
-2. Press **▶ Replay live stream** to watch the wearable stream arrive in simulated real time. Alerts, forecasts and the ward order update live.
-3. **Why this alert** shows the patient-specific drivers (meal, sleep debt, HRV, trend, twin physiology).
-4. **What-if simulator**: choose a meal, portion, timing and post-meal walk, then compare trajectories. **Best swaps** ranks region-appropriate alternatives for *this* patient.
-5. **Pre-consultation summary**: auto-drafted narrative and discussion points to copy into the EMR.
+Press **Guided demo** in the header for a 2-minute, reproducible walk-through (patient P050, 11 Sep 12:10). Every number it narrates is fetched from the API.
+
+| Page | What it answers |
+|---|---|
+| **Overview** | Who needs attention now and why: four KPIs, a risk queue with each patient's main driver, a triage map (glucose vs 2-h risk) and the latest alerts with their real outcomes |
+| **Ward** | Every patient, searchable, filterable by tier, diagnosis and SU/insulin therapy, and sortable |
+| **Twin** | One patient at one moment: 2-h risk and its TreeSHAP drivers; observed CGM, ML forecast with 90% interval and twin physiology on one chart; a replay scrubber over the whole record; the twin's internal state (observations → state → projection → review); wearables, food response, sleep, labs and the pre-consultation summary |
+| **Simulate** | The twin rolled forward 5 h from the replay clock under a planned meal and walk, against no further meal; **Rank options** simulates every regional alternative |
+| **Records** | The FHIR R4 bundle made readable, with structural checks run in the browser (not a conformance validator) |
+| **Alerts** | Every notification the alert policy sent, with what the CGM recorded next |
+
+The **replay clock** in the header drives every page (−1 h / +1 h, Replay, speed). It is stored in the URL, so `#/patient/P050?t=2026-09-11T12:10` is a shareable, reproducible view. On the Twin page, **Reveal what happened next** overlays the CGM recorded after the clock (retrospective only, never shown to the model). Observed, predicted, simulated and revealed data always use distinct marks and labels.
+
+![Patient twin](reports/figures/twin.png)
 
 ### API
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/ward?at=` | triaged ward list |
-| `GET /api/patients/{id}?at=` | full twin state: history, forecasts, risk + reasons, insights, summary |
+| `GET /api/ward?at=` | triaged ward list with each patient's main risk driver |
+| `GET /api/patients/{id}?at=&reveal=` | full twin state: history, forecasts, risk + reasons, twin internal state, data freshness, alerts, insights, summary; `reveal=true` adds the CGM recorded after `at` |
+| `GET /api/patients/{id}/timeline?at=` | whole-record strip for the replay scrubber (hourly glucose, meals, alerts), up to `at` only |
+| `GET /api/alerts?at=&hours=` | alerts sent by the alert policy, with outcomes using only data up to `at` |
 | `POST /api/patients/{id}/whatif` | simulate scenarios (meals, portions, walks) from the current state |
 | `GET /api/patients/{id}/meal-ranking?slot=` | personalised meal-swap ranking |
-| `GET /api/patients/{id}/fhir` | the patient's FHIR R4 bundle |
+| `GET /api/patients/{id}/fhir` | the patient's FHIR R4 bundle (ABHA masked) |
+| `GET /api/status`, `GET /api/meta` | readiness (models loaded, cohort) and model card / thresholds |
 
 Interactive docs: http://localhost:8000/docs
 

@@ -80,6 +80,12 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/status")
+def status():
+    """Readiness: loads the twins and models, so a failure here means predictions are unavailable."""
+    return svc().status()
+
+
 @app.get("/api/meta")
 def meta():
     return svc().meta()
@@ -91,9 +97,20 @@ def ward(at: str | None = None):
 
 
 @app.get("/api/patients/{pid}")
-def patient(pid: str, at: str | None = None, window_h: float = Query(12, ge=2, le=48)):
+def patient(pid: str, at: str | None = None, window_h: float = Query(12, ge=2, le=48), reveal: bool = False):
     _check(pid)
-    return svc().patient(pid, _at(at), window_h)
+    return svc().patient(pid, _at(at), window_h, reveal)
+
+
+@app.get("/api/patients/{pid}/timeline")
+def timeline(pid: str, at: str | None = None):
+    _check(pid)
+    return svc().timeline(pid, _at(at))
+
+
+@app.get("/api/alerts")
+def alerts(at: str | None = None, hours: float = Query(24, ge=1, le=72)):
+    return svc().alerts(_at(at), hours)
 
 
 @app.post("/api/patients/{pid}/whatif")
@@ -122,6 +139,15 @@ def fhir(pid: str):
 
 
 if DASHBOARD.exists():
+    @app.middleware("http")
+    async def revalidate_dashboard(request, call_next):
+        """Dashboard files are unversioned: make browsers revalidate (cheap 304s) so a new deploy
+        never runs against a stale cached stylesheet or module."""
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     app.mount("/static", StaticFiles(directory=DASHBOARD), name="static")
 
     @app.get("/", include_in_schema=False)

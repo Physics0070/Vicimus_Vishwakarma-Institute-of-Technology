@@ -1,51 +1,80 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GlucoTwin Virtual Ward</title>
+  <title>GlucoTwin India · Virtual Ward</title>
+  <meta name="description" content="A calibrated physiological digital twin for every patient: 2-hour glucose forecasts, explained alerts and what-if simulation. Research prototype on synthetic data.">
+  <meta name="theme-color" content="#070d1a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070d1a'/%3E%3Cpath d='M5 19c3 0 3.5-7 6.5-7s3.5 9 6.5 9 3.5-7 6.5-7' fill='none' stroke='%2338bdf8' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/vendor/plotly-basic.min.js"></script>
+  <script>
+    // apply the saved theme before first paint (no flash)
+    try { const t = localStorage.getItem("gt-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <script src="/static/vendor/plotly-basic.min.js" defer></script>
+  <script type="module" src="/static/js/main.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">G</div>
-      <div>GlucoTwin India<small>Virtual diabetes ward · digital twin decision support</small></div>
+  <a class="skip" href="#view">Skip to content</a>
+
+  <header class="appbar" id="appbar">
+    <a class="brand" href="#/" aria-label="GlucoTwin India, overview">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" class="bm-bg"/>
+        <path d="M5 19c3 0 3.5-7 6.5-7s3.5 9 6.5 9 3.5-7 6.5-7" class="bm-obs"/>
+        <path d="M5 23c3 0 3.5-7 6.5-7s3.5 9 6.5 9 3.5-7 6.5-7" class="bm-twin"/>
+      </svg>
+      <span class="brand-name">GlucoTwin<span>India</span></span>
+    </a>
+
+    <nav class="nav" id="nav" aria-label="Primary">
+      <a href="#/" data-nav="overview">Overview</a>
+      <a href="#/ward" data-nav="ward">Ward</a>
+      <a href="#/patient" data-nav="twin">Twin</a>
+      <a href="#/simulate" data-nav="simulate">Simulate</a>
+      <a href="#/records" data-nav="records">Records</a>
+      <a href="#/alerts" data-nav="alerts">Alerts</a>
+    </nav>
+
+    <div class="clock" id="clock" role="group" aria-label="Replay clock">
+      <button class="icon-btn" id="clockBack" title="Back 1 hour" aria-label="Back 1 hour"><svg viewBox="0 0 20 20"><path d="M12.5 5 7.5 10l5 5"/></svg></button>
+      <div class="clock-read">
+        <span class="clock-label"><span class="pulse" aria-hidden="true"></span>Replay clock</span>
+        <time id="clockTime">-</time>
+      </div>
+      <button class="icon-btn" id="clockFwd" title="Forward 1 hour" aria-label="Forward 1 hour"><svg viewBox="0 0 20 20"><path d="m7.5 5 5 5-5 5"/></svg></button>
+      <button class="btn btn-play" id="clockPlay" aria-pressed="false"><svg viewBox="0 0 20 20" class="i-play"><path d="M7 5v10l8-5z"/></svg><svg viewBox="0 0 20 20" class="i-pause"><path d="M7 5v10M13 5v10"/></svg><span>Replay</span></button>
+      <label class="speed"><span class="sr">Replay speed</span>
+        <select id="clockSpeed"><option value="5">5 min/tick</option><option value="15" selected>15 min/tick</option><option value="30">30 min/tick</option></select>
+      </label>
     </div>
-    <div class="clock" id="clock">
-      <span class="model-chip" id="modelChip"></span>
-      <button class="btn" id="back" title="Back 1 hour">−1 h</button>
-      <span class="clock-time"><span class="live-dot"></span><span id="now">-</span></span>
-      <button class="btn" id="fwd" title="Forward 1 hour">+1 h</button>
-      <select id="speed" aria-label="Replay speed">
-        <option value="5">5 min / tick</option>
-        <option value="15" selected>15 min / tick</option>
-        <option value="30">30 min / tick</option>
-      </select>
-      <button class="btn primary" id="play">▶ Replay live stream</button>
-      <button class="btn" id="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+
+    <div class="appbar-tools">
+      <button class="sys" id="sysBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="sysPanel">
+        <span class="sys-dot" data-state="unknown"></span><span class="sys-text">Connecting</span>
+      </button>
+      <button class="btn btn-ghost" id="tourBtn">Guided demo</button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg></button>
     </div>
   </header>
 
-  <div class="layout">
-    <aside class="ward" aria-label="Patients">
-      <h2>Virtual ward · sorted by 2-h risk</h2>
-      <div id="wardList"></div>
-    </aside>
+  <div class="sys-panel" id="sysPanel" role="dialog" aria-label="System status" hidden></div>
 
-    <main id="main">
-      <div class="empty">Loading virtual ward…</div>
-    </main>
-  </div>
+  <main id="view" class="view" tabindex="-1" aria-live="polite">
+    <div class="boot"><div class="boot-wave" aria-hidden="true"><svg viewBox="0 0 120 30"><path d="M0 18c10 0 12-12 22-12s12 18 22 18 12-14 22-14 12 10 22 10 12-6 22-6"/></svg></div><p>Loading the virtual ward…</p></div>
+  </main>
 
-  <dialog id="fhirDialog">
-    <h3>FHIR R4 record (ABDM-compatible resource shapes)</h3>
-    <p class="muted">Synthetic bundle. Patient, Condition (SNOMED CT), Observation (LOINC), MedicationStatement (RxNorm).</p>
-    <pre id="fhirPre"></pre>
-    <form method="dialog"><button class="btn">Close</button></form>
-  </dialog>
+  <footer class="foot">
+    <span>GlucoTwin India · Team Vicimus, VIT Pune</span>
+    <span>Research prototype on a <b>synthetic</b> cohort. Not a medical device; not for clinical decisions.</span>
+  </footer>
 
-  <script src="/static/app.js"></script>
+  <div class="tour" id="tour" role="dialog" aria-label="Guided demo" hidden></div>
+  <div class="tour-ring" id="tourRing" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

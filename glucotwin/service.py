@@ -13,7 +13,7 @@ import pandas as pd
 from . import config as C
 from .features import FEATURE_LABELS
 from .meals import MEALS, by_slot
-from .metrics import excursion_onsets
+from .metrics import alert_notifications, excursion_onsets
 from .pipeline import load_data, load_twin
 
 STEP = pd.Timedelta(minutes=C.SAMPLE_MIN)
@@ -41,7 +41,7 @@ def _reason_label(f: str) -> str:
     if f in ("twin_g30", "twin_g60", "twin_g120", "twin_d30", "twin_d60", "twin_d120"):
         return "twin-simulated trajectory"
     if f in ("asleep", "sleep_last_h", "sleep_debt", "sleep_eff", "sleep_deep", "sleep_rem"):
-        return {"asleep": "currently asleep"}.get(f, FEATURE_LABELS.get(f, f))
+        return {"asleep": "sleep/wake state"}.get(f, FEATURE_LABELS.get(f, f))
     return FEATURE_LABELS.get(f, f.replace("_", " "))
 
 
@@ -78,6 +78,7 @@ class ClinicalService:
         self.n_steps = C.N_DAYS * 1440 // C.SAMPLE_MIN
         self.end = self.start + STEP * (self.n_steps - 1)
         self._twins = {}
+        self._p_cache, self._alert_cache = {}, {}
         groups = self.models["groups"]
         self.stream_of = {f: g for g, fs in groups.items() for f in fs}
         self.metrics = json.loads((C.REPORT_DIR / "metrics.json").read_text())
@@ -126,28 +127,53 @@ class ClinicalService:
         return "low"
 
     # ------------------------------------------------------------------ ward
+    def _reasons(self, contrib: pd.Series, cur: pd.Series | None = None, top: int = 7) -> list[dict]:
+        """Merge TreeSHAP contributions that mean the same thing to a clinician (e.g. sin/cos of time,
+        twin parameters) and return the largest, signed, in log-odds."""
+        label_of = {f: _reason_label(f) for f in contrib.index}
+        merged = contrib.groupby(label_of).sum()
+        rep = {}
+        for f in contrib.abs().sort_values(ascending=False).index:
+            rep.setdefault(label_of[f], f)
+        out = []
+        for label, v in merged.reindex(merged.abs().sort_values(ascending=False).index).head(top).items():
+            f = rep[label]
+            show_value = cur is not None and not f.startswith(("tod_", "twin_p_")) and f != "asleep"
+            out.append({"feature": f, "label": label, "stream": self.stream_of.get(f, "Twin"),
+                        "value": _clean(cur[f]) if show_value else None, "impact": round(float(v), 3)})
+        return out
+
+    def _top_driver(self, contrib: pd.Series) -> str | None:
+        """The single factor pushing risk up the most (None if nothing raises it)."""
+        up = [r for r in self._reasons(contrib, top=len(contrib)) if r["impact"] > 0]
+        return max(up, key=lambda r: r["impact"])["label"] if up else None
+
     def ward(self, at=None) -> dict:
         i = self.index_at(at)
+        rows = pd.concat([self.feat[pid].iloc[[i]] for pid in self.ward_ids])
+        pr = self._predict(rows)
+        contrib = self.models["spike"].contributions(rows).drop(columns="_bias")
         out = []
-        for pid in self.ward_ids:
-            rows = self._rows(pid, i, i)
-            pr = self._predict(rows)
-            r = rows.iloc[0]
+        for k, pid in enumerate(self.ward_ids):
+            r = rows.iloc[k]
             hist = self.feat[pid]["cgm"].iloc[max(0, i - 288): i + 1].to_numpy()
             e = self.ehr.loc[pid]
-            ps, ph = float(pr["spike"][0]), float(pr["hypo"][0])
+            ps, ph = float(pr["spike"][k]), float(pr["hypo"][k])
             out.append({
                 "patient_id": pid, "name": e["name"], "age": int(e["age"]), "sex": e["sex"], "status": e["status"],
                 "glucose": _clean(r["g0"]), "trend_15": _clean(r["d_15"]), "p_spike": round(ps, 3), "p_hypo": round(ph, 3),
-                "pred_60": _clean(pr["fc"][60]["point"][0]), "tier": self._tier(ps, ph, r["g0"]),
+                "pred_60": _clean(pr["fc"][60]["point"][k]), "tier": self._tier(ps, ph, r["g0"]),
                 "tir_24h": glycaemic_metrics(hist).get("tir_pct"),
+                "reason": self._top_driver(contrib.iloc[k]),
+                "on_hypo_agents": bool(e.sulfonylurea or e.basal_insulin),
+                "cgm_missing": bool(not np.isfinite(r["cgm"])),
             })
         order = {"high": 0, "moderate": 1, "low": 2}
         out.sort(key=lambda d: (order[d["tier"]], -d["p_spike"]))
         return {"at": str(self.start + STEP * i), "patients": out}
 
     # ------------------------------------------------------------------ patient
-    def patient(self, pid: str, at=None, window_h: float = 12) -> dict:
+    def patient(self, pid: str, at=None, window_h: float = 12, reveal: bool = False) -> dict:
         i = self.index_at(at)
         now = self.start + STEP * i
         lo = max(0, i - int(window_h * 60 / C.SAMPLE_MIN))
@@ -171,23 +197,27 @@ class ClinicalService:
 
         # explanation of the current spike risk
         contrib = self.models["spike"].contributions(cur).iloc[0].drop("_bias")
-        # merge features that mean the same thing to a clinician (e.g. sin/cos of time, twin parameters)
-        label_of = {f: _reason_label(f) for f in contrib.index}
-        merged = contrib.groupby(label_of).sum()
-        rep = {}
-        for f in contrib.abs().sort_values(ascending=False).index:
-            rep.setdefault(label_of[f], f)
-        top = merged.reindex(merged.abs().sort_values(ascending=False).index).head(7)
-        reasons = []
-        for label, v in top.items():
-            f = rep[label]
-            show_value = not f.startswith(("tod_", "twin_p_")) and f != "asleep"
-            reasons.append({"feature": f, "label": label, "stream": self.stream_of.get(f, "Twin"),
-                            "value": _clean(cur[f].iloc[0]) if show_value else None, "impact": round(float(v), 3)})
+        reasons = self._reasons(contrib, cur.iloc[0])
         by_stream = contrib.groupby(lambda f: self.stream_of.get(f, "Twin")).sum().round(3).to_dict()
+
+        # data freshness: the last CGM reading the model actually had
+        cgm_win = rows["cgm"].to_numpy()
+        seen = np.where(np.isfinite(cgm_win))[0]
+        last_ts = self.start + STEP * (lo + int(seen[-1])) if len(seen) else None
+        freshness = {"last_cgm_ts": str(last_ts) if last_ts is not None else None,
+                     "minutes_since_cgm": int((now - last_ts) / pd.Timedelta(minutes=1)) if last_ts is not None else None,
+                     "missing_last_hour": int(np.isnan(cgm_win[-12:]).sum())}
+        alerts = [str(self.start + STEP * j) for j in self._alert_idx(pid) if lo <= j <= i]
+        outcome = None
+        if reveal:     # retrospective replay only: what the sensor recorded AFTER "now" (never shown to the model)
+            fut = self.feat[pid].iloc[i + 1: i + 25]
+            outcome = {"ts": [str(t) for t in fut["ts"]], "cgm": _series(fut["cgm"])}
 
         return {
             "at": str(now), "patient": self.profile(pid),
+            "state": {"plasma_glucose": _clean(tw.G[i]), "insulin_action_e4": _clean(tw.X[i] * 1e4), "basal_glucose": _clean(tw.p.gb),
+                      "activity_effect": _clean(tw.A[i]), "carbs_on_board_g": _clean(tw.carbs_on_board(np.array([i]))[0])},
+            "freshness": freshness, "alerts": alerts, "outcome": outcome,
             "current": {"glucose": _clean(g0), "trend_15": _clean(cur["d_15"].iloc[0]),
                         "hr": _clean(cur["hr"].iloc[0]), "hrv": _clean(cur["hrv_1h"].iloc[0]),
                         "steps_today": int(stream[(stream.patient_id == pid)].iloc[(i // 288) * 288: i + 1]["steps"].sum()),
@@ -210,6 +240,86 @@ class ClinicalService:
             "activity": [{"ts": str(r.ts), "duration_min": int(r.duration_min), "type": r.type} for r in pa.itertuples()],
             "insights": self.insights(pid, i),
         }
+
+    # ------------------------------------------------------------------ alerts (CGM-style policy)
+    def _p_all(self, pid: str) -> np.ndarray:
+        """2-h spike risk at every 5-min step of a ward patient (each row uses only its own past)."""
+        if pid not in self._p_cache:
+            self._p_cache[pid] = self.models["spike"].predict_proba(self.feat[pid])
+        return self._p_cache[pid]
+
+    def _alert_idx(self, pid: str) -> np.ndarray:
+        """Steps at which the alert policy notifies (10-min confirmation, 60-min snooze). The policy is
+        causal, so the alerts at or before any replay time are exactly what a live system would have sent."""
+        if pid not in self._alert_cache:
+            self._alert_cache[pid] = alert_notifications(self._p_all(pid), self.models["spike"].threshold)
+        return self._alert_cache[pid]
+
+    def alerts(self, at=None, hours: float = 24) -> dict:
+        i = self.index_at(at)
+        now = self.start + STEP * i
+        lo = max(0, i - int(hours * 60 / C.SAMPLE_MIN))
+        window = C.EVENT_WINDOW_MIN // C.SAMPLE_MIN
+        events, rows = [], []
+        for pid in self.ward_ids:
+            cgm = self.feat[pid]["cgm"].to_numpy()
+            p = self._p_all(pid)
+            for j in self._alert_idx(pid):
+                if not lo <= j <= i:
+                    continue
+                # the outcome uses only data up to "now": an alert whose 2-h window is still open is pending
+                seen = cgm[j + 1: min(j + window, i) + 1]
+                hit = np.where(seen >= C.HYPER_THRESHOLD)[0]
+                if len(hit):
+                    outcome, lead = "excursion", int((hit[0] + 1) * C.SAMPLE_MIN)
+                elif j + window <= i:
+                    outcome, lead = "no_excursion", None
+                else:
+                    outcome, lead = "pending", None
+                events.append({"patient_id": pid, "name": self.ehr.loc[pid, "name"], "ts": str(self.start + STEP * int(j)),
+                               "p_spike": round(float(p[j]), 3), "glucose": _clean(self.feat[pid]["g0"].iloc[j]),
+                               "severity": "high" if p[j] >= self.spike_high else "moderate",
+                               "outcome": outcome, "lead_min": lead})
+                rows.append(self.feat[pid].iloc[[j]])
+        if rows:
+            contrib = self.models["spike"].contributions(pd.concat(rows)).drop(columns="_bias")
+            for k, ev in enumerate(events):
+                ev["reason"] = self._top_driver(contrib.iloc[k])
+        events.sort(key=lambda d: d["ts"], reverse=True)
+        counts = {o: sum(e["outcome"] == o for e in events) for o in ("excursion", "no_excursion", "pending")}
+        return {"at": str(now), "hours": hours, "threshold": self.models["spike"].threshold,
+                "policy": "risk above threshold for 2 readings (10 min), then a 60-min snooze",
+                "counts": counts, "events": events}
+
+    # ------------------------------------------------------------------ timeline (replay scrubber)
+    def timeline(self, pid: str, at=None) -> dict:
+        """Whole-record overview for the replay scrubber, built only from data recorded up to "now"."""
+        i = self.index_at(at)
+        now = self.start + STEP * i
+        cgm = self.feat[pid]["cgm"].to_numpy()[: i + 1]
+        n_h = int(np.ceil(len(cgm) / 12))
+        padded = np.full(n_h * 12, np.nan)
+        padded[: len(cgm)] = cgm
+        with np.errstate(all="ignore"):
+            hourly = np.nanmean(padded.reshape(n_h, 12), axis=1)
+        meals = self.data["meals"]
+        pm = meals[(meals.patient_id == pid) & meals.logged & (meals.logged_ts <= now)]
+        return {
+            "start": str(self.start), "end": str(self.end), "at": str(now),
+            "hourly_mean": _series(np.round(hourly, 0)),
+            "meals": [{"ts": str(r.logged_ts), "name": MEALS[r.meal_key].name, "carbs_g": _clean(r.logged_carbs_g)}
+                      for r in pm.itertuples()],
+            "alerts": [str(self.start + STEP * int(j)) for j in self._alert_idx(pid) if j <= i],
+            "excursions": [str(self.start + STEP * j) for j in excursion_onsets(cgm)],
+        }
+
+    def status(self) -> dict:
+        manifest = C.RAW_DIR / "manifest.json"
+        m = json.loads(manifest.read_text()) if manifest.exists() else {}
+        return {"models_loaded": True, "ward_size": len(self.ward_ids), "cohort_size": int(len(self.ehr)),
+                "twins_calibrated": int(len(self.twin_params)), "data_start": str(self.start), "data_end": str(self.end),
+                "synthetic": True, "seed": m.get("seed"), "data_generated_on": m.get("generated_on"),
+                "spike_threshold": self.models["spike"].threshold, "hypo_model": self.models.get("hypo") is not None}
 
     def profile(self, pid: str) -> dict:
         e = self.ehr.loc[pid]
@@ -359,12 +469,18 @@ class ClinicalService:
         return {
             "start": str(self.start), "end": str(self.end), "default_now": str(self.default_now),
             "playback_start": str(self.start + pd.Timedelta(days=C.CALIB_DAYS)),
-            "horizons": list(C.HORIZONS_MIN), "thresholds": {"hyper": C.HYPER_THRESHOLD, "hypo": C.HYPO_THRESHOLD},
+            "horizons": list(C.HORIZONS_MIN), "thresholds": {"hyper": C.HYPER_THRESHOLD, "hypo": C.HYPO_THRESHOLD,
+                           "spike_alert": self.models["spike"].threshold, "spike_high": self.spike_high},
+            "hypo_model": self.models.get("hypo") is not None,
             "meals": [m.to_dict() for m in MEALS.values()],
             "model_card": {
                 "rmse_30": round(f["30"]["rmse"], 1), "rmse_60": round(f["60"]["rmse"], 1),
                 "rmse_120": round(f["120"]["rmse"], 1), "clarke_ab_60": round(f["60"]["clarke_AB_pct"], 1),
                 "spike_auroc": round(f["spike"]["auroc"], 3), "median_lead_min": f["events"]["median_lead_min"],
                 "coverage_60": round(f["60"]["coverage_pct"], 1),
+                "sensitivity_pct": round(f["events"]["sensitivity_pct"]),
+                "false_alerts_per_day": round(f["events"]["false_alerts_per_patient_day"], 2),
+                "excursions": f["events"]["excursions"], "detected": f["events"]["detected"],
             },
+            "ward_size": len(self.ward_ids), "cohort_size": int(len(self.ehr)), "synthetic": True,
         }
