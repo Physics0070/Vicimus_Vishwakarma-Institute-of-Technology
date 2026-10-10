@@ -1,40 +1,41 @@
 /* GlucoTwin India: design system
-   Dark clinical-command palette by default, light theme on request.
+   Warm-graphite palette by default, light theme on request.
    Series semantics are fixed across every chart:
      observed  = --obs   (neutral, what a sensor recorded)
-     predicted = --pred  (cyan, ML forecast with its interval)
-     twin/sim  = --twin  (violet, physiological twin / what-if)
+     predicted = --pred  (periwinkle, ML forecast with its interval)
+     twin/sim  = --twin  (orchid, physiological twin / what-if)
      revealed  = --rev   (amber outline, recorded later, never seen by the model) */
 
 :root {
-  --bg: #070d1a;
-  --bg-glow: radial-gradient(1200px 520px at 78% -8%, rgba(56, 189, 248, .07), transparent 60%),
-             radial-gradient(900px 480px at 8% 4%, rgba(167, 139, 250, .05), transparent 60%);
-  --s1: #0b1324;
-  --s2: #101a2e;
-  --s3: #162239;
-  --line: rgba(148, 163, 184, .13);
-  --line-2: rgba(148, 163, 184, .24);
-  --text: #e8eef8;
-  --text-2: #a9b6cb;
-  --text-3: #8191aa;
-  --obs: #e8eef8;
-  --pred: #38bdf8;
-  --pred-soft: rgba(56, 189, 248, .16);
-  --twin: #a78bfa;
-  --twin-soft: rgba(167, 139, 250, .16);
-  --twin-2: #e879f9;
+  --bg: #0c0b0f;
+  --bg-glow: radial-gradient(1200px 520px at 80% -10%, rgba(142, 162, 255, .08), transparent 60%),
+             radial-gradient(900px 480px at 6% 2%, rgba(232, 121, 249, .05), transparent 60%);
+  --s1: #131217;
+  --s2: #1a1920;
+  --s3: #24222c;
+  --line: rgba(236, 228, 214, .10);
+  --line-2: rgba(236, 228, 214, .21);
+  --text: #f2eee6;
+  --text-2: #b8b1a4;
+  --text-3: #988f84;
+  --obs: #f2eee6;
+  
+  --pred: #8ea2ff;
+  --pred-soft: rgba(142, 162, 255, .17);
+  --twin: #e879f9;
+  --twin-soft: rgba(232, 121, 249, .15);
+  --twin-2: #f0abfc;
   --rev: #fbbf24;
-  --high: #fb7185;
-  --high-soft: rgba(251, 113, 133, .14);
-  --mod: #fbbf24;
-  --mod-soft: rgba(251, 191, 36, .13);
-  --low: #34d399;
-  --low-soft: rgba(52, 211, 153, .12);
-  --range: rgba(52, 211, 153, .07);
-  --focus: #7dd3fc;
-  --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 12px 32px -18px rgba(0, 0, 0, .7);
-  --glass: rgba(11, 19, 36, .72);
+  --high: #ff6b57;
+  --high-soft: rgba(255, 107, 87, .15);
+  --mod: #f5c451;
+  --mod-soft: rgba(245, 196, 81, .13);
+  --low: #4ade80;
+  --low-soft: rgba(74, 222, 128, .12);
+  --range: rgba(74, 222, 128, .07);
+  --focus: #b4c0ff;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 12px 32px -18px rgba(0, 0, 0, .75);
+  --glass: rgba(19, 18, 23, .76);
 
   --font: "Instrument Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
@@ -47,33 +48,33 @@
 }
 
 :root[data-theme="light"] {
-  --bg: #f3f6fb;
-  --bg-glow: radial-gradient(1200px 520px at 78% -8%, rgba(14, 165, 233, .08), transparent 60%);
+  --bg: #f6f3ec;
+  --bg-glow: radial-gradient(1200px 520px at 80% -10%, rgba(68, 87, 214, .07), transparent 60%);
   --s1: #ffffff;
-  --s2: #f6f8fc;
-  --s3: #edf1f8;
-  --line: rgba(15, 23, 42, .09);
-  --line-2: rgba(15, 23, 42, .17);
-  --text: #0b1324;
-  --text-2: #3d4b63;
-  --text-3: #5b6a82;
-  --obs: #0b1324;
-  --pred: #0284c7;
-  --pred-soft: rgba(2, 132, 199, .13);
-  --twin: #7c3aed;
-  --twin-soft: rgba(124, 58, 237, .11);
+  --s2: #f9f6f0;
+  --s3: #efeadf;
+  --line: rgba(40, 32, 20, .10);
+  --line-2: rgba(40, 32, 20, .19);
+  --text: #1a1712;
+  --text-2: #4a443a;
+  --text-3: #6a6355;
+  --obs: #1a1712;
+  --pred: #3f51d8;
+  --pred-soft: rgba(63, 81, 216, .12);
+  --twin: #a21caf;
+  --twin-soft: rgba(162, 28, 175, .10);
   --twin-2: #c026d3;
   --rev: #b45309;
-  --high: #e11d48;
-  --high-soft: rgba(225, 29, 72, .09);
-  --mod: #b45309;
-  --mod-soft: rgba(217, 119, 6, .11);
-  --low: #047857;
-  --low-soft: rgba(5, 150, 105, .1);
-  --range: rgba(5, 150, 105, .07);
-  --focus: #0284c7;
-  --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 10px 28px -20px rgba(15, 23, 42, .35);
-  --glass: rgba(255, 255, 255, .78);
+  --high: #d4351c;
+  --high-soft: rgba(212, 53, 28, .09);
+  --mod: #a16207;
+  --mod-soft: rgba(202, 138, 4, .12);
+  --low: #15803d;
+  --low-soft: rgba(21, 128, 61, .10);
+  --range: rgba(21, 128, 61, .07);
+  --focus: #3f51d8;
+  --shadow: 0 1px 2px rgba(40, 32, 20, .05), 0 10px 28px -20px rgba(40, 32, 20, .35);
+  --glass: rgba(255, 255, 255, .8);
   color-scheme: light;
 }
 
