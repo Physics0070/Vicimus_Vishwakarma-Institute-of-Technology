@@ -18,7 +18,7 @@ export default {
           <p class="lede">GlucoTwin fuses CGM, smartwatch and EHR data into a personal physiological model, forecasts glucose two hours ahead with an honest uncertainty band, and lets you test a meal or a walk on the twin before you prescribe it.</p>
           <div class="row">
             <a class="btn btn-primary" id="openTop" href="#/patient">Open highest-risk twin ${ICON.arrow}</a>
-            <button class="btn btn-ghost" id="heroTour">Take the 2-minute guided demo</button>
+            <a class="btn btn-ghost" href="#/ward">Open the virtual ward</a>
           </div>
           <div class="hero-proof" title="Evaluated on 16 synthetic patients the models never saw, days 11–14">
             <div><b>${mc.sensitivity_pct}%</b><span>of excursions above 180 flagged in advance</span></div>
@@ -78,7 +78,6 @@ export default {
     const req = latest();
     const triage = mountTriage($("#triage", root), { onOpen: (pid) => (location.hash = `#/patient/${pid}`) });
     let heroPid = null;
-    $("#heroTour", root).addEventListener("click", () => document.getElementById("tourBtn").click());
     const steps = $("#steps", root);
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { steps.style.setProperty("--prog", 1); io.disconnect(); } }, { threshold: 0.3 });
     io.observe(steps);
@@ -95,11 +94,10 @@ export default {
         renderQueue(ward);
         triage.update(ward, store.meta.thresholds.spike_alert);
         renderAlerts(al);
-        if (store.topPid !== heroPid) {
-          heroPid = store.topPid;
-          const d = await api(`/api/patients/${heroPid}?at=${at}&window_h=6`, { signal });
-          renderHero(d);
-        }
+        const fresh = store.topPid !== heroPid;
+        heroPid = store.topPid;
+        const d = await api(`/api/patients/${heroPid}?at=${at}&window_h=6`, { signal });
+        renderHero(d, fresh);
         emit("ready", "overview");
       } catch (e) {
         if (isAbort(e)) return;
@@ -151,12 +149,12 @@ export default {
       }).join("") : `<li class="empty">No alerts in the last 24 hours of the replay.</li>`;
     }
 
-    function renderHero(d) {
+    function renderHero(d, animate) {
       const fig = $("#heroViz", root);
       // drawn-in lines: drop the animation class once it has had time to run, so a page loaded in a
       // background tab (where CSS animations are paused) never leaves the series invisible
-      setTimeout(() => fig.querySelectorAll(".draw, .fade-late").forEach((n) => n.classList.remove("draw", "fade-late")), 3500);
-      fig.innerHTML = `${heroSvg(d)}
+      if (animate) setTimeout(() => fig.querySelectorAll(".draw, .fade-late").forEach((n) => n.classList.remove("draw", "fade-late")), 2000);
+      fig.innerHTML = `${heroSvg(d, animate)}
         <figcaption class="hero-cap">
           <span>Highest risk now: <a class="link" href="#/patient/${esc(d.patient.patient_id)}">${esc(d.patient.name)}</a> · ${tierPill(d.risk.tier)} ${pct(d.risk.p_spike)}</span>
           <span class="hero-legend"><span class="key"><i class="k-obs"></i>Observed</span><span class="key"><i class="k-twin"></i>Twin physiology</span><span class="key"><i class="k-pred"></i>ML forecast</span><span class="key"><i class="k-band"></i>90% interval</span></span>

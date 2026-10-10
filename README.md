@@ -83,7 +83,7 @@ Post-meal glucose excursions, which are common with India's carbohydrate-heavy r
 | Event alerts | LightGBM classifiers + a CGM-style alert policy: threshold chosen for **≤ 1 false alert per patient-day**, 10-min confirmation, 60-min snooze (alert fatigue is a safety issue) |
 | Explainability | LightGBM-native **TreeSHAP**, grouped by data stream and translated to plain language |
 | Backend | FastAPI (typed with Pydantic), stateless "replay clock" that simulates a live stream |
-| Frontend | Dependency-free HTML/CSS + ES modules + Plotly (bundled for offline demos); hash-routed pages, shared replay clock, guided demo, scroll reveals that respect reduced motion; dark and light themes; responsive down to phone width |
+| Frontend | Dependency-free HTML/CSS + ES modules + Plotly (bundled for offline demos); hash-routed pages, shared replay clock, scroll reveals that respect reduced motion; dark and light themes; responsive down to phone width |
 | Quality | pytest (physiology, FHIR, twin calibration, *no-future-leakage* test, metrics, API contracts incl. no-peeking checks); Docker; Vercel |
 
 ### Indian context, built in
@@ -172,7 +172,7 @@ Or with Docker: `docker compose up --build`, then open http://localhost:8000.
 Tests: `python -m pytest -q`
 
 ### Using the dashboard
-Press **Guided demo** in the header for a 2-minute, reproducible walk-through (patient P050, 11 Sep 12:10). Every number it narrates is fetched from the API.
+Open **Overview**, pick a patient from the risk queue, and press **Replay** in the header to watch the ward update as time passes.
 
 | Page | What it answers |
 |---|---|

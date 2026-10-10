@@ -5,7 +5,8 @@ import { parseTs, esc, fmtHM } from "../ui.js";
 
 const W = 720, H = 300, M = { l: 44, r: 18, t: 18, b: 34 };
 
-export function heroSvg(d) {
+export function heroSvg(d, animate = true) {
+  const A = (cls) => (animate ? ` class="${cls}"` : "");
   const now = parseTs(d.at).getTime();
   const t0 = now - 6 * 3600e3, t1 = now + 2 * 3600e3 + 5 * 60e3;
   const obs = d.history.ts.map((t, k) => [parseTs(t).getTime(), d.history.cgm[k]]).filter(([t]) => t >= t0);
@@ -50,19 +51,19 @@ export function heroSvg(d) {
     <text x="${M.l + 6}" y="${y(180) - 6}" font-size="10.5" fill="var(--high)" opacity=".8">180 mg/dL</text>
     ${hours.map((t) => `<text x="${x(t)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--text-3)" font-family="var(--mono)">${fmtHM(new Date(t))}</text>`).join("")}
 
-    <path d="${obsPath}" pathLength="1" class="draw" fill="none" stroke="var(--obs)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--d:.1s" opacity=".9"/>
+    <path d="${obsPath}" pathLength="1" ${A("draw")} fill="none" stroke="var(--obs)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--d:0s" opacity=".9"/>
     <line x1="${x(now)}" x2="${x(now)}" y1="${M.t}" y2="${H - M.b}" stroke="var(--text-3)" stroke-dasharray="2 4"/>
     <text x="${x(now)}" y="${M.t - 4}" text-anchor="middle" font-size="10.5" fill="var(--text-2)" letter-spacing=".08em">NOW</text>
-    ${band ? `<polygon points="${band}" fill="var(--pred-soft)" class="fade-late" style="--d:1.5s"/>` : ""}
-    <path d="${twinPath}" class="fade-late" fill="none" stroke="var(--twin)" stroke-width="2.2" stroke-dasharray="6 5" style="--d:1.3s"/>
-    <path d="${predPath}" pathLength="1" class="draw" fill="none" stroke="var(--pred)" stroke-width="2.4" style="--d:1.5s"/>
-    ${pred.slice(1).map(([t, v]) => `<circle cx="${x(t)}" cy="${y(v)}" r="4" fill="var(--pred)" stroke="var(--bg)" stroke-width="2" class="fade-late" style="--d:2s"/>`).join("")}
+    ${band ? `<polygon points="${band}" fill="var(--pred-soft)" ${A("fade-late")} style="--d:.6s"/>` : ""}
+    <path d="${twinPath}" ${A("fade-late")} fill="none" stroke="var(--twin)" stroke-width="2.2" stroke-dasharray="6 5" style="--d:.5s"/>
+    <path d="${predPath}" pathLength="1" ${A("draw")} fill="none" stroke="var(--pred)" stroke-width="2.4" style="--d:.6s"/>
+    ${pred.slice(1).map(([t, v]) => `<circle cx="${x(t)}" cy="${y(v)}" r="4" fill="var(--pred)" stroke="var(--bg)" stroke-width="2" ${A("fade-late")} style="--d:.9s"/>`).join("")}
     ${g0 != null ? `<circle cx="${x(now)}" cy="${y(g0)}" r="5.5" fill="var(--obs)" stroke="var(--bg)" stroke-width="2.5"/>` : ""}
 
-    <g class="fade-late" style="--d:.6s" font-size="11.5" font-weight="600">
+    <g ${A("fade-late")} style="--d:.3s" font-size="11.5" font-weight="600">
       <text x="${M.l + 6}" y="${M.t + 4}" fill="var(--obs)">PATIENT · observed CGM</text>
     </g>
-    <g class="fade-late" style="--d:2.1s" font-size="11.5" font-weight="600">
+    <g ${A("fade-late")} style="--d:.9s" font-size="11.5" font-weight="600">
       ${twinEnd?.[1] != null ? `<text x="${x(twinEnd[0]) - 4}" y="${y(twinEnd[1]) + (twinEnd[1] > (last?.[1] ?? 0) ? -10 : 18)}" text-anchor="end" fill="var(--twin)">TWIN · physiology</text>` : ""}
       ${last ? `<text x="${x(last[0]) - 4}" y="${y(last[1]) + (last[1] >= (twinEnd?.[1] ?? 0) ? -12 : 20)}" text-anchor="end" fill="var(--pred)">ML forecast ± 90%</text>` : ""}
     </g>

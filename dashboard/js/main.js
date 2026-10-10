@@ -10,7 +10,6 @@ import twin from "./views/twin.js";
 import simulate from "./views/simulate.js";
 import records from "./views/records.js";
 import alerts from "./views/alerts.js";
-import { startTour } from "./tour.js";
 
 const ROUTES = [
   { re: /^\/?$/, name: "overview", view: overview },
@@ -186,7 +185,6 @@ function bindChrome() {
     if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === " " && document.activeElement === document.body) { e.preventDefault(); setPlaying(!store.playing); }
   });
-  $("#tourBtn").addEventListener("click", () => startTour());
   window.addEventListener("hashchange", route);
 }
 
