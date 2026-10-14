@@ -6,7 +6,7 @@ COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY . .
 
-# Build the synthetic cohort, calibrate twins and train models at image build time (~3 min)
+# Build the synthetic cohort, calibrate twins and train models at image build time (~8 min)
 RUN python -m glucotwin.pipeline
 
 EXPOSE 8000
