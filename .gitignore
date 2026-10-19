@@ -19,3 +19,7 @@ presenter/
 
 .vercel
 .env*
+
+# Large generated media (the demo video is ~150 MB, above the 100 MB GitHub file limit)
+video/
+*.mp4
