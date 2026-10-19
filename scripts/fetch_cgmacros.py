@@ -11,8 +11,10 @@ personalized nutrition and diet monitoring (version 1.0.0). PhysioNet (2025).
 
 from __future__ import annotations
 
+import http.client
 import io
 import sys
+import time
 import urllib.request
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -44,9 +46,18 @@ class HttpRangeFile(io.RawIOBase):
         return self.pos
 
     def _fetch(self, start: int, end: int) -> bytes:
-        req = urllib.request.Request(self.url, headers={"Range": f"bytes={start}-{end - 1}"})
-        with urllib.request.urlopen(req, timeout=300) as r:
-            return r.read()
+        # PhysioNet drops connections under parallel load: retry with backoff instead of failing the whole run
+        for attempt in range(6):
+            try:
+                req = urllib.request.Request(self.url, headers={"Range": f"bytes={start}-{end - 1}"})
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    data = r.read()
+                if len(data) == end - start:
+                    return data
+            except (OSError, http.client.HTTPException):
+                pass
+            time.sleep(1.5 * (attempt + 1))
+        raise RuntimeError(f"could not fetch bytes {start}-{end} after 6 attempts")
 
     def prefetch(self, start: int, end: int, workers: int = 32) -> None:
         """Fetch a byte range in parallel blocks (the server is slow per connection)."""

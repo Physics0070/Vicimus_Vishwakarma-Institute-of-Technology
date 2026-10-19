@@ -299,7 +299,7 @@ h1, h2, h3 { letter-spacing: -.02em; margin: 0; }
 
 /* ------------------------------------------------------------------ triage map */
 .triage { position: relative; }
-.triage svg { width: 100%; height: auto; overflow: visible; }
+.triage > svg { width: 100%; height: auto; overflow: visible; }
 .triage .ax { stroke: var(--line-2); }
 .triage .grid-l { stroke: var(--line); }
 .triage text { fill: var(--text-3); font: 11px var(--font); }
