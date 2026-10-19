@@ -31,7 +31,7 @@ FIG = ROOT / "reports" / "figures"
 
 LIVE_URL = "https://glucotwin-india.vercel.app"
 REPO_URL = "github.com/Physics0070/Vicimus_Vishwakarma-Institute-of-Technology"
-REAL_DATA_STALE = True      # set False after re-running `python -m glucotwin.realdata` on the current code
+REAL_DATA_STALE = False     # real-data figures re-run on the current code (CGMacros, 45 adults)
 DEMO_PID, DEMO_AT = "P050", "2026-09-11T12:10"
 
 # ---------------------------------------------------------------------------- palette (the dashboard's)

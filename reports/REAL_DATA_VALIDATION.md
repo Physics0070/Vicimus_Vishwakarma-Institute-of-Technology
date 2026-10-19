@@ -6,14 +6,14 @@
 |---|---|---|---|---|---|
 | Persistence | 20.0 | 29.1 | 38.6 | - | - |
 | Twin only (physiology) | 28.1 | 32.1 | 32.7 | - | - |
-| CGM only | 16.6 | 23.8 | 28.7 | 0.908 | 0.862 |
+| CGM only | 16.6 | 23.8 | 28.6 | 0.907 | 0.862 |
 | + Wearable & meal log | 15.9 | 23.2 | 28.1 | 0.917 | 0.875 |
-| + Labs/EHR (stream fusion) | 15.9 | 23.5 | 28.2 | 0.911 | 0.868 |
-| + Twin physiology (full hybrid) | 15.6 | 22.5 | 27.1 | 0.909 | 0.869 |
+| + Labs/EHR (stream fusion) | 15.9 | 23.5 | 28.2 | 0.911 | 0.869 |
+| + Twin physiology (full hybrid) | 15.5 | 22.5 | 27.2 | 0.910 | 0.871 |
 
-- Full hybrid at 60 min: MARD 10.8%, Clarke A+B 99.6%.
+- Full hybrid at 60 min: MARD 10.8%, Clarke A+B 99.5%.
 - Personal twin calibration reduced the twin's forecast loss by 30% on average vs the lab-based prior.
-- **Clinical operating point** (nested: each fold picks its threshold on held-out *training* participants, targeting ≤ 1 false alert/day): 211/298 excursions above 180 mg/dL flagged in advance (71%), median lead 46 min, **1.20 false alerts per participant-day** (vs 216/298 and 1.50/day at a naive 0.5 threshold).
+- **Clinical operating point** (nested: each fold picks its threshold on held-out *training* participants, targeting ≤ 1 false alert/day): 207/298 excursions above 180 mg/dL flagged in advance (69%), median lead 41 min, **1.18 false alerts per participant-day** (vs 209/298 and 1.49/day at a naive 0.5 threshold).
 - **Where the hybrid helps:** the full model beats CGM-only at every horizon, and wearable + meal data improve spike discrimination. **Where it does not (yet):** the twin alone is worse than persistence at 30 min (its value is at longer horizons and for simulation), and fasting labs add no measurable accuracy with n = 45.
 
 Differences from the synthetic study: CGMacros has no HRV or sleep staging, activity comes from Fitbit METs rather than steps, meals carry macros but no GI (a default GI of 55 is used), and the cohort is American rather than Indian. The pipeline ran unchanged apart from this adapter.

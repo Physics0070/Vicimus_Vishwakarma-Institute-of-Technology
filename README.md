@@ -131,21 +131,19 @@ Evaluation protocol (no leakage): **subject-level split**, 48 train / 16 conform
 
 ### External validation on real people (CGMacros)
 
-> The real-data figures in this section were produced before a later fix to CGM gap-filling in the feature code (it moved the synthetic results by about 1–3%). To regenerate them: `python scripts/fetch_cgmacros.py && python -m glucotwin.realdata`.
-
 The same pipeline, with one data adapter, was run on **45 real adults** (15 healthy, 16 prediabetes, 14 T2D) from the open-access [CGMacros](https://physionet.org/content/cgmacros/1.0.0/) dataset: Dexcom/Libre CGM, Fitbit heart rate and activity, macro-annotated meals and fasting labs. Twins were calibrated on the first 60% of each recording. The ML layer was evaluated with **5-fold leave-subjects-out** cross-validation on the last 40%. Full report: [`reports/REAL_DATA_VALIDATION.md`](reports/REAL_DATA_VALIDATION.md).
 
 | Model (real data) | RMSE @30 | RMSE @60 | RMSE @120 |
 |---|---|---|---|
 | Persistence | 20.0 | 29.1 | 38.6 |
 | Twin only (physiology) | 28.1 | 32.1 | 32.7 |
-| CGM only | 16.6 | 23.8 | 28.7 |
+| CGM only | 16.6 | 23.8 | 28.6 |
 | + Wearable & meal log | 15.9 | 23.2 | 28.1 |
 | + Labs/EHR (stream fusion) | 15.9 | 23.5 | 28.2 |
-| **+ Twin physiology (full hybrid)** | 15.6 | 22.5 | 27.1 |
+| **+ Twin physiology (full hybrid)** | 15.5 | 22.5 | 27.2 |
 
-- On real data the full hybrid beats persistence by **22%** at 60 min and beats CGM-only at every horizon. Clarke A+B is **99.6%**.
-- With the same alert policy and a **nested, leakage-free threshold** (each fold tunes it on held-out training participants): **211/298** real excursions above 180 mg/dL flagged in advance (71%), median lead **46 min**, **1.20 false alerts per participant-day**. That is close to, but not yet under, the 1/day target; a naive 0.5 threshold gives 1.50/day.
+- On real data the full hybrid beats persistence by **23%** at 60 min and beats CGM-only at every horizon. Clarke A+B is **99.5%**.
+- With the same alert policy and a **nested, leakage-free threshold** (each fold tunes it on held-out training participants): **207/298** real excursions above 180 mg/dL flagged in advance (69%), median lead **41 min**, **1.18 false alerts per participant-day**. That is close to, but not yet under, the 1/day target; a naive 0.5 threshold gives 1.49/day.
 - Where it does **not** help yet: the twin alone is worse than persistence at 30 min (its value is at longer horizons and for simulation), and fasting labs add no measurable accuracy with n = 45.
 
 ![Real-data ablation](reports/figures/real_ablation_rmse.png)
